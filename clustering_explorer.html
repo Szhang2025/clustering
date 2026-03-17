@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clustering Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #070d1a;
+  --ocean:  #0a1628;
+  --deep:   #0d1f3c;
+  --panel:  #0f2444;
+  --panel2: #132952;
+  --border: #1e3a6e;
+  --border2:#2a5099;
+  --teal:   #00c9b1;
+  --teal2:  #00a896;
+  --teal3:  #00dfc6;
+  --violet: #7c6fcd;
+  --violet2:#9b8fe8;
+  --gold:   #f5c842;
+  --gold2:  #e8b830;
+  --coral:  #e8614a;
+  --coral2: #ff7b61;
+  --mint:   #6be5c3;
+  --sky:    #4ab8e8;
+  --text:   #c8dff5;
+  --text2:  #8aabcc;
+  --muted:  #4a6a8a;
+  --muted2: #2d4a6a;
+  /* cluster palette */
+  --c0:#00c9b1; --c1:#f5c842; --c2:#e8614a;
+  --c3:#7c6fcd; --c4:#4ab8e8; --c5:#6be5c3;
+  --c6:#ff9f43; --c7:#ff6b9d;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Lato',sans-serif;
+  min-height:100vh;overflow-x:hidden;
+}
+/* Contour map background */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% 30%, rgba(0,201,177,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 70%, rgba(124,111,205,0.05) 0%, transparent 55%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(30,58,110,0.15) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(30,58,110,0.10) 40px);
+}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:300;
+  background:rgba(7,13,26,0.95);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;height:58px;
+  display:flex;align-items:center;gap:1.4rem;
+}
+.logo-glyph{
+  font-size:1.6rem;line-height:1;
+  filter:drop-shadow(0 0 8px rgba(0,201,177,0.6));
+}
+.logo-title{
+  font-family:'DM Serif Display',serif;font-size:1.25rem;
+  color:var(--teal3);letter-spacing:0.02em;
+}
+.logo-sub{
+  font-family:'Space Mono',monospace;font-size:0.58rem;
+  color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;
+}
+.header-right{margin-left:auto;display:flex;gap:0.6rem;align-items:center;}
+.hchip{
+  font-family:'Space Mono',monospace;font-size:0.6rem;
+  color:var(--teal2);background:rgba(0,201,177,0.08);
+  border:1px solid rgba(0,201,177,0.25);padding:0.2rem 0.55rem;border-radius:20px;
+}
+
+/* ── TABS ── */
+.tabbar{
+  display:flex;overflow-x:auto;scrollbar-width:none;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,22,40,0.9);
+  position:sticky;top:58px;z-index:200;
+}
+.tabbar button{
+  font-family:'Space Mono',monospace;font-size:0.68rem;letter-spacing:0.04em;
+  padding:0.8rem 1.2rem;background:none;border:none;
+  color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;
+  text-transform:uppercase;
+}
+.tabbar button.active{color:var(--teal3);border-bottom-color:var(--teal);}
+.tabbar button:hover:not(.active){color:var(--text2);}
+
+/* ── LAYOUT ── */
+.tab-content{display:none;}
+.tab-content.active{display:block;animation:rise 0.28s ease;}
+@keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.wrap{max-width:1320px;margin:0 auto;padding:2rem;position:relative;z-index:1;}
+
+/* ── CARDS ── */
+.card{
+  background:rgba(13,31,60,0.85);
+  border:1px solid var(--border);border-radius:6px;
+  padding:1.5rem;margin-bottom:1.4rem;
+  backdrop-filter:blur(4px);
+  box-shadow:0 4px 24px rgba(0,0,0,0.4);
+}
+.card::before{
+  content:'';display:block;height:1px;
+  background:linear-gradient(90deg,transparent,var(--teal),var(--violet),transparent);
+  margin:-1.5rem -1.5rem 1.2rem;opacity:0.4;
+}
+.card-title{
+  font-family:'DM Serif Display',serif;font-size:1rem;
+  color:var(--teal3);margin-bottom:1rem;
+  display:flex;align-items:center;gap:0.5rem;
+}
+.card-title .badge{
+  font-family:'Space Mono',monospace;font-size:0.6rem;
+  background:rgba(0,201,177,0.12);color:var(--teal2);
+  border:1px solid rgba(0,201,177,0.3);padding:0.1rem 0.4rem;border-radius:3px;
+}
+
+/* ── CONCEPT GRID ── */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:680px){.cgrid{grid-template-columns:1fr;}}
+.cblock{
+  background:rgba(19,41,82,0.6);border:1px solid var(--border);
+  border-radius:5px;padding:1.1rem;
+}
+.cblock h3{
+  font-family:'DM Serif Display',serif;font-size:0.95rem;font-style:italic;
+  color:var(--gold);margin-bottom:0.5rem;
+}
+.cblock p{font-size:0.88rem;color:var(--text2);line-height:1.8;}
+
+.formula{
+  background:rgba(7,13,26,0.8);border:1px solid var(--border);
+  border-left:3px solid var(--teal);
+  border-radius:4px;padding:0.75rem 1rem;
+  font-family:'Space Mono',monospace;font-size:0.72rem;
+  color:var(--mint);margin:0.7rem 0;line-height:2;
+}
+.formula .fh{color:var(--teal3);font-weight:700;}
+.formula .fa{color:var(--gold);}
+.formula .fr{color:var(--coral2);}
+.formula .fv{color:var(--violet2);}
+
+/* ── BUTTONS ── */
+.btn{
+  font-family:'Space Mono',monospace;font-size:0.68rem;letter-spacing:0.04em;
+  text-transform:uppercase;
+  padding:0.5rem 1.1rem;border-radius:4px;border:1px solid var(--border2);
+  cursor:pointer;transition:all 0.18s;display:inline-flex;
+  align-items:center;gap:0.4rem;
+  background:rgba(19,41,82,0.7);color:var(--text2);
+}
+.btn:hover{border-color:var(--teal);color:var(--teal3);background:rgba(0,201,177,0.08);}
+.btn-teal{background:rgba(0,201,177,0.15);color:var(--teal3);border-color:var(--teal2);}
+.btn-teal:hover{background:rgba(0,201,177,0.28);box-shadow:0 0 14px rgba(0,201,177,0.25);transform:translateY(-1px);}
+.btn-violet{background:rgba(124,111,205,0.15);color:var(--violet2);border-color:var(--violet);}
+.btn-violet:hover{background:rgba(124,111,205,0.28);}
+.btn-gold{background:rgba(245,200,66,0.12);color:var(--gold);border-color:var(--gold2);}
+.btn-gold:hover{background:rgba(245,200,66,0.24);}
+.btn-coral{color:var(--coral2);border-color:var(--coral);}
+.btn-coral:hover{background:rgba(232,97,74,0.18);}
+
+/* ── FORM ── */
+.row{display:flex;gap:0.9rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.1rem;}
+.fgroup{display:flex;flex-direction:column;gap:0.3rem;}
+.fgroup label{
+  font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;
+  text-transform:uppercase;color:var(--muted);
+}
+select,input[type=number]{
+  background:rgba(7,13,26,0.8);border:1px solid var(--border2);border-radius:4px;
+  padding:0.42rem 0.7rem;color:var(--teal3);
+  font-family:'Space Mono',monospace;font-size:0.72rem;
+  outline:none;transition:border-color 0.15s;min-width:110px;
+}
+select:focus,input:focus{border-color:var(--teal);}
+select option{background:#0d1f3c;}
+
+/* ── PILLS ── */
+.pills{display:flex;border:1px solid var(--border2);border-radius:4px;overflow:hidden;}
+.pills button{
+  flex:1;padding:0.4rem 0.8rem;background:none;border:none;
+  font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:0.04em;text-transform:uppercase;
+  color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap;
+}
+.pills button.active{background:rgba(0,201,177,0.18);color:var(--teal3);}
+
+/* ── SLIDER ── */
+.slrow{display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;}
+.cl-slider{
+  -webkit-appearance:none;height:3px;border-radius:2px;flex:1;min-width:120px;
+  background:linear-gradient(90deg,var(--teal) var(--spct,50%),var(--border) var(--spct,50%));
+  border:none;cursor:pointer;outline:none;
+}
+.cl-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--teal);cursor:pointer;border:2px solid var(--bg);
+  box-shadow:0 0 8px rgba(0,201,177,0.5);
+}
+.sl-val{font-family:'Space Mono',monospace;font-size:0.82rem;color:var(--teal3);min-width:45px;text-align:right;font-weight:700;}
+
+/* ── STAT BOXES ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.7rem;margin-bottom:1.1rem;}
+.stat-box{
+  background:rgba(19,41,82,0.5);border:1px solid var(--border);
+  border-radius:5px;padding:0.85rem 1rem;text-align:center;
+}
+.stat-box .sv{font-family:'DM Serif Display',serif;font-size:1.5rem;}
+.stat-box .sl{font-family:'Space Mono',monospace;font-size:0.58rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem;}
+
+/* ── CANVAS ── */
+canvas{display:block;border-radius:5px;max-width:100%;}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow:auto;max-height:300px;border-radius:4px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:0.75rem;}
+thead{background:var(--panel);position:sticky;top:0;z-index:2;}
+th{font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--teal2);padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);}
+td{padding:0.42rem 0.8rem;border-bottom:1px solid rgba(30,58,110,0.4);
+  font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(0,201,177,0.04);}
+
+/* ── UPLOAD ── */
+.drop-zone{
+  border:2px dashed var(--border2);border-radius:5px;padding:1.8rem;
+  text-align:center;cursor:pointer;transition:all 0.2s;position:relative;
+}
+.drop-zone:hover{border-color:var(--teal);background:rgba(0,201,177,0.03);}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.drop-zone .dicon{font-size:1.8rem;margin-bottom:0.5rem;}
+.drop-zone h3{font-family:'DM Serif Display',serif;font-size:0.95rem;color:var(--teal3);margin-bottom:0.3rem;}
+.drop-zone p{font-size:0.8rem;color:var(--muted);}
+
+/* ── CLUSTER LEGEND ── */
+.cluster-legend{display:flex;flex-wrap:wrap;gap:0.5rem 1rem;margin-top:0.5rem;}
+.cl-item{display:flex;align-items:center;gap:0.4rem;font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--text2);}
+.cl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* ── STATUS LINE ── */
+.status-line{
+  font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--teal2);
+  padding:0.5rem 0;min-height:1.4rem;
+}
+
+/* ── TOOLTIP ── */
+.term{color:var(--teal3);border-bottom:1px dashed var(--teal2);cursor:help;display:inline;}
+.term-tip{display:none;}
+#cl-tooltip{
+  position:fixed;z-index:99999;width:255px;
+  background:rgba(10,22,40,0.97);border:1px solid var(--border2);
+  border-top:2px solid var(--teal);border-radius:5px;
+  padding:0.65rem 0.85rem;
+  font-family:'Lato',sans-serif;font-size:0.78rem;color:var(--text2);line-height:1.75;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);
+  pointer-events:auto;opacity:0;transition:opacity 0.12s;white-space:normal;
+}
+#cl-tooltip.visible{opacity:1;}
+#cl-tooltip strong{color:var(--teal3);}
+#cl-tooltip a{display:inline-block;margin-top:0.35rem;color:var(--violet2);
+  text-decoration:none;font-size:0.72rem;border-bottom:1px solid var(--border2);}
+#cl-tooltip a:hover{color:var(--violet)}
+#cl-tooltip::before{content:'';position:absolute;border:5px solid transparent;}
+#cl-tooltip.arrow-down::before{top:100%;left:var(--al,50%);transform:translateX(-50%);border-top-color:var(--border2);}
+#cl-tooltip.arrow-up::before{bottom:100%;left:var(--al,50%);transform:translateX(-50%);border-bottom-color:var(--border2);}
+
+/* ── PRINT ── */
+@media print{
+  body{background:white;color:black;}body::before,body::after{display:none;}
+  header,.tabbar,.btn,.row,.drop-zone{display:none!important;}
+  .tab-content{display:block!important;}
+  .card{border:1px solid #ccc;background:white;}
+}
+</style>
+</head>
+<body>
+<div id="cl-tooltip"></div>
+
+<header>
+  <div class="logo-glyph">⬡</div>
+  <div>
+    <div class="logo-title">Clustering Explorer</div>
+    <div class="logo-sub">K-Means · DBSCAN · Hierarchical · Metrics</div>
+  </div>
+  <div class="header-right">
+    <span class="hchip">unsupervised learning</span>
+  </div>
+</header>
+
+<div class="tabbar">
+  <button class="active" onclick="switchTab('concepts')">① Concepts</button>
+  <button onclick="switchTab('kmeans')">② K-Means</button>
+  <button onclick="switchTab('dbscan')">③ DBSCAN</button>
+  <button onclick="switchTab('hierarchical')">④ Hierarchical</button>
+  <button onclick="switchTab('metrics')">⑤ Metrics</button>
+  <button onclick="switchTab('compare')">⑥ Compare</button>
+  <button onclick="switchTab('data')">⑦ Data</button>
+  <button onclick="switchTab('export')">⑧ Export</button>
+</div>
+
+<!-- ══ TAB 1: CONCEPTS ══ -->
+<div id="tab-concepts" class="tab-content active">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">What Is Clustering? <span class="badge">unsupervised</span></div>
+    <div class="cgrid">
+      <div class="cblock">
+        <h3>Unsupervised Learning</h3>
+        <p>Clustering finds <em>natural groupings</em> in data without labels. Unlike classification, there is no "correct answer" — we discover structure that already exists. The goal: points in the same cluster should be <strong style="color:var(--teal3)">similar</strong> to each other and <strong style="color:var(--coral2)">different</strong> from points in other clusters.</p>
+      </div>
+      <div class="cblock">
+        <h3>Distance Metrics</h3>
+        <div class="formula"><span class="fh">Euclidean:</span>  d(a,b) = √Σ(aᵢ−bᵢ)²
+<span class="fa">Manhattan:</span>  d(a,b) = Σ|aᵢ−bᵢ|
+<span class="fv">Cosine:</span>     d(a,b) = 1 − (a·b)/(‖a‖‖b‖)
+<span class="fr">Chebyshev:</span>  d(a,b) = max|aᵢ−bᵢ|</div>
+        <p style="font-size:0.8rem;color:var(--text2);margin-top:0.5rem;">Choice of distance defines what "similar" means — Euclidean is most common, but Manhattan handles outliers better.</p>
+      </div>
+      <div class="cblock">
+        <h3>Three Paradigms</h3>
+        <p><strong style="color:var(--teal3)">Partitional</strong> (K-Means): divide into K non-overlapping clusters. Needs K specified upfront. Fast, works well on spherical clusters.<br><br>
+        <strong style="color:var(--violet2)">Density-based</strong> (DBSCAN): finds clusters as dense regions separated by sparse regions. Handles arbitrary shapes, finds outliers.<br><br>
+        <strong style="color:var(--gold)">Hierarchical</strong> (Agglomerative): builds a tree of nested clusters. No K needed upfront — cut the tree at any level.</p>
+      </div>
+      <div class="cblock">
+        <h3>Evaluation (No Labels)</h3>
+        <div class="formula"><span class="fh">Inertia (WCSS):</span>
+  Σₖ Σᵢ∈Cₖ ‖xᵢ − μₖ‖²  (lower = better)
+<span class="fa">Silhouette score:</span>
+  s(i) = (b(i)−a(i)) / max(a(i),b(i))
+  a = mean intra-cluster dist
+  b = mean nearest-cluster dist
+  <span class="fv">s ∈ [−1, 1], higher = better</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Choosing the Right Algorithm</div>
+    <div class="cgrid">
+      <div class="cblock"><h3>K-Means — When to Use</h3>
+        <p>Works best on: compact, spherical clusters of similar size and density. Sensitive to outliers. Must specify K. Very fast — O(nKt) per iteration. Good first choice for large datasets when cluster shapes are simple.</p></div>
+      <div class="cblock"><h3>DBSCAN — When to Use</h3>
+        <p>Works best on: irregularly shaped clusters, data with noise/outliers. Automatically detects K. Sensitive to ε and minPts hyperparameters. Struggles with varying densities. Ideal for geographic data, anomaly detection.</p></div>
+      <div class="cblock"><h3>Hierarchical — When to Use</h3>
+        <p>Works best on: small-to-medium datasets where you want to explore structure at multiple scales. Produces a dendrogram for interpretability. Slow — O(n²) or O(n² log n). Great for gene expression, document similarity.</p></div>
+      <div class="cblock"><h3>The <span class="term">Curse of Dimensionality<span class="term-tip"><strong>Curse of Dimensionality</strong><br>In high dimensions, all pairwise distances converge to the same value — everything becomes "equally far apart". Clustering breaks down. Solutions: dimensionality reduction (PCA, t-SNE) before clustering, or use cosine similarity.<a href="https://en.wikipedia.org/wiki/Curse_of_dimensionality" target="_blank">Wikipedia ↗</a></span></span></h3>
+        <p>Distance-based clustering degrades in high dimensions. Always consider normalizing features and reducing dimensions first. The silhouette score itself becomes unreliable beyond ~20 dimensions.</p></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══ TAB 2: K-MEANS ══ -->
+<div id="tab-kmeans" class="tab-content">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">K-Means — Step-by-Step Animation</div>
+    <div class="cgrid" style="margin-bottom:1rem;">
+      <div class="cblock">
+        <h3>Algorithm</h3>
+        <div class="formula"><span class="fh">1. Initialise</span> K centroids (random or k-means++)
+<span class="fa">2. Assign</span>  each point to nearest centroid
+<span class="fv">3. Update</span>  centroids ← mean of assigned points
+<span class="fh">4. Repeat</span>  until centroids stop moving
+Converges in O(nKt) · t = iterations</div>
+      </div>
+      <div class="cblock">
+        <h3>K-Means++ Initialisation</h3>
+        <p>Random init can get stuck in bad local minima. <strong style="color:var(--teal3)">K-Means++</strong> spreads initial centroids apart: first centroid is random; each subsequent centroid is chosen with probability proportional to <em>d²</em> (squared distance to nearest existing centroid). This typically reduces iterations by 2–5×.</p>
+        <div class="formula"><span class="fh">P(x chosen as centroid)</span> ∝ d(x, nearest_existing)²</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="fgroup"><label>K clusters</label>
+        <div class="slrow">
+          <input type="range" class="cl-slider" id="km-k" min="2" max="8" value="3" step="1"
+            oninput="kmK=+this.value;document.getElementById('km-k-val').textContent=kmK;updateSliderPct(this)">
+          <div class="sl-val" id="km-k-val">3</div>
+        </div>
+      </div>
+      <div class="fgroup"><label>Init method</label>
+        <div class="pills">
+          <button class="active" id="km-init-pp" onclick="kmInit='pp';setKMPill()">K-Means++</button>
+          <button id="km-init-rand" onclick="kmInit='random';setKMPill()">Random</button>
+        </div>
+      </div>
+      <div class="fgroup"><label>Dataset</label>
+        <div class="pills">
+          <button class="active" id="kmd-blobs" onclick="setKMDS('blobs')">Blobs</button>
+          <button id="kmd-moons" onclick="setKMDS('moons')">Moons</button>
+          <button id="kmd-rings" onclick="setKMDS('rings')">Rings</button>
+          <button id="kmd-uneven" onclick="setKMDS('uneven')">Uneven</button>
+        </div>
+      </div>
+      <button class="btn btn-teal" onclick="kmReset();kmStep()">▶ Run K-Means</button>
+      <button class="btn" onclick="kmStep()">→ Step</button>
+      <button class="btn btn-coral" onclick="kmReset()">↺ Reset</button>
+    </div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:1;min-width:300px;">
+        <canvas id="km-canvas" width="560" height="440"
+          style="width:100%;border:1px solid var(--border);background:var(--ocean);cursor:crosshair;"></canvas>
+        <div class="cluster-legend" id="km-legend"></div>
+      </div>
+      <div style="flex:0 0 220px;min-width:200px;display:flex;flex-direction:column;gap:0.7rem;">
+        <div class="cblock">
+          <h3 style="color:var(--teal3);font-size:0.82rem;margin-bottom:0.4rem;">ITERATION</h3>
+          <div style="font-family:'DM Serif Display',serif;font-size:2.2rem;color:var(--gold);" id="km-iter">0</div>
+        </div>
+        <div class="cblock">
+          <h3 style="color:var(--teal3);font-size:0.82rem;margin-bottom:0.4rem;">INERTIA (WCSS)</h3>
+          <div style="font-family:'Space Mono',monospace;font-size:1.1rem;color:var(--mint);" id="km-inertia">—</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:0.2rem;">within-cluster sum of squares</div>
+        </div>
+        <div class="cblock">
+          <h3 style="color:var(--teal3);font-size:0.82rem;margin-bottom:0.4rem;">SILHOUETTE</h3>
+          <div style="font-family:'Space Mono',monospace;font-size:1.1rem;color:var(--violet2);" id="km-sil">—</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:0.2rem;">avg silhouette score</div>
+        </div>
+        <div class="cblock">
+          <h3 style="color:var(--teal3);font-size:0.82rem;margin-bottom:0.4rem;">PHASE</h3>
+          <div style="font-family:'Space Mono',monospace;font-size:0.75rem;color:var(--text2);" id="km-phase">Not started</div>
+        </div>
+        <div id="km-converged" style="display:none;background:rgba(0,201,177,0.12);border:1px solid var(--teal2);border-radius:4px;padding:0.6rem;font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--teal3);text-align:center;">
+          ✓ CONVERGED
+        </div>
+      </div>
+    </div>
+    <div class="status-line" id="km-status"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══ TAB 3: DBSCAN ══ -->
+<div id="tab-dbscan" class="tab-content">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">DBSCAN — Density-Based Spatial Clustering</div>
+    <div class="cgrid" style="margin-bottom:1rem;">
+      <div class="cblock">
+        <h3>Algorithm</h3>
+        <div class="formula"><span class="fh">For each point p:</span>
+  Find all points within distance <span class="fa">ε</span>  (ε-neighbourhood)
+  If |N(p)| ≥ <span class="fv">minPts</span> → p is a <span class="fh">core point</span>
+  Expand cluster by density-reachability
+<span class="fr">Noise:</span> not reachable from any core point
+<span class="fv">Border:</span> in ε-nbhd of core, not core itself</div>
+      </div>
+      <div class="cblock">
+        <h3>Core, Border, Noise</h3>
+        <p><strong style="color:var(--teal3)">Core point</strong>: has ≥ minPts neighbours within ε. Forms the backbone of a cluster.<br><br>
+        <strong style="color:var(--gold)">Border point</strong>: within ε of a core point but has fewer than minPts neighbours itself.<br><br>
+        <strong style="color:var(--coral2)">Noise point</strong>: not within ε of any core point. Labelled −1. This is DBSCAN's killer feature — it explicitly identifies outliers.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="fgroup"><label>ε (epsilon)</label>
+        <div class="slrow">
+          <input type="range" class="cl-slider" id="db-eps" min="0.05" max="0.8" value="0.2" step="0.01"
+            oninput="dbEps=+this.value;document.getElementById('db-eps-val').textContent=dbEps.toFixed(2);updateSliderPct(this);runDBSCAN()">
+          <div class="sl-val" id="db-eps-val">0.20</div>
+        </div>
+      </div>
+      <div class="fgroup"><label>minPts</label>
+        <div class="slrow">
+          <input type="range" class="cl-slider" id="db-min" min="2" max="15" value="4" step="1"
+            oninput="dbMin=+this.value;document.getElementById('db-min-val').textContent=dbMin;updateSliderPct(this);runDBSCAN()">
+          <div class="sl-val" id="db-min-val">4</div>
+        </div>
+      </div>
+      <div class="fgroup"><label>Dataset</label>
+        <div class="pills">
+          <button class="active" id="dbd-moons" onclick="setDBDS('moons')">Moons</button>
+          <button id="dbd-rings" onclick="setDBDS('rings')">Rings</button>
+          <button id="dbd-blobs" onclick="setDBDS('blobs')">Blobs</button>
+          <button id="dbd-noisy" onclick="setDBDS('noisy')">Noisy</button>
+        </div>
+      </div>
+      <button class="btn btn-violet" onclick="runDBSCAN()">▶ Run DBSCAN</button>
+    </div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:1;min-width:300px;">
+        <canvas id="db-canvas" width="560" height="440"
+          style="width:100%;border:1px solid var(--border);background:var(--ocean);"></canvas>
+        <div class="cluster-legend" id="db-legend"></div>
+      </div>
+      <div style="flex:0 0 220px;min-width:200px;display:flex;flex-direction:column;gap:0.7rem;">
+        <div class="cblock">
+          <h3 style="color:var(--teal3);font-size:0.82rem;margin-bottom:0.4rem;">CLUSTERS FOUND</h3>
+          <div style="font-family:'DM Serif Display',serif;font-size:2.2rem;color:var(--teal3);" id="db-nclusters">—</div>
+        </div>
+        <div class="cblock">
+          <h3 style="color:var(--coral2);font-size:0.82rem;margin-bottom:0.4rem;">NOISE POINTS</h3>
+          <div style="font-family:'DM Serif Display',serif;font-size:2.2rem;color:var(--coral2);" id="db-noise">—</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:0.2rem;">labelled −1</div>
+        </div>
+        <div class="cblock">
+          <h3 style="color:var(--teal3);font-size:0.82rem;margin-bottom:0.4rem;">CORE POINTS</h3>
+          <div style="font-family:'DM Serif Display',serif;font-size:2.2rem;color:var(--gold);" id="db-core">—</div>
+        </div>
+        <div class="cblock" style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--text2);line-height:1.8;">
+          <div><span style="color:var(--teal3)">●</span> Core point (large)</div>
+          <div><span style="color:var(--gold)">●</span> Border point (medium)</div>
+          <div><span style="color:var(--coral2)">✕</span> Noise / outlier</div>
+          <div style="margin-top:0.4rem;color:var(--muted);">Circle radius = ε neighbourhood</div>
+        </div>
+      </div>
+    </div>
+    <div class="status-line" id="db-status"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══ TAB 4: HIERARCHICAL ══ -->
+<div id="tab-hierarchical" class="tab-content">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Hierarchical Clustering — Dendrogram</div>
+    <div class="cgrid" style="margin-bottom:1rem;">
+      <div class="cblock">
+        <h3>Agglomerative Algorithm</h3>
+        <div class="formula"><span class="fh">Start:</span> each point is its own cluster
+<span class="fa">Repeat:</span> merge the two closest clusters
+<span class="fv">Stop:</span>  when only one cluster remains
+Result: a <span class="fh">dendrogram</span> (tree of merges)
+Cut at height h → k clusters</div>
+      </div>
+      <div class="cblock">
+        <h3>Linkage Methods</h3>
+        <p><strong style="color:var(--teal3)">Single</strong>: min dist between clusters. Makes long "chaining" clusters.<br>
+        <strong style="color:var(--gold)">Complete</strong>: max dist. Compact, similar-sized clusters.<br>
+        <strong style="color:var(--violet2)">Average</strong>: mean of all pairwise distances. Balance between single and complete.<br>
+        <strong style="color:var(--coral2)">Ward</strong>: minimises within-cluster variance increase. Usually best for spherical clusters.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="fgroup"><label>Linkage</label>
+        <div class="pills">
+          <button class="active" id="hc-ward" onclick="setHCLink('ward')">Ward</button>
+          <button id="hc-complete" onclick="setHCLink('complete')">Complete</button>
+          <button id="hc-average" onclick="setHCLink('average')">Average</button>
+          <button id="hc-single" onclick="setHCLink('single')">Single</button>
+        </div>
+      </div>
+      <div class="fgroup"><label>Cut to K clusters</label>
+        <div class="slrow">
+          <input type="range" class="cl-slider" id="hc-k" min="1" max="8" value="3" step="1"
+            oninput="hcK=+this.value;document.getElementById('hc-k-val').textContent=hcK;updateSliderPct(this);drawDendrogram()">
+          <div class="sl-val" id="hc-k-val">3</div>
+        </div>
+      </div>
+      <div class="fgroup"><label>Dataset</label>
+        <div class="pills">
+          <button class="active" id="hcd-blobs" onclick="setHCDS('blobs')">Blobs</button>
+          <button id="hcd-moons" onclick="setHCDS('moons')">Moons</button>
+          <button id="hcd-rings" onclick="setHCDS('rings')">Rings</button>
+        </div>
+      </div>
+      <button class="btn btn-gold" onclick="runHierarchical()">▶ Build Dendrogram</button>
+    </div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:1;min-width:280px;">
+        <div style="font-size:0.65rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.4rem;">Scatter — clusters at cut height</div>
+        <canvas id="hc-scatter" width="480" height="360"
+          style="width:100%;border:1px solid var(--border);background:var(--ocean);"></canvas>
+        <div class="cluster-legend" id="hc-legend"></div>
+      </div>
+      <div style="flex:1;min-width:280px;">
+        <div style="font-size:0.65rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.4rem;">Dendrogram — drag cut line ←→</div>
+        <canvas id="hc-dendro" width="480" height="360"
+          style="width:100%;border:1px solid var(--border);background:var(--ocean);cursor:ew-resize;touch-action:none;"></canvas>
+      </div>
+    </div>
+    <div class="status-line" id="hc-status"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══ TAB 5: METRICS ══ -->
+<div id="tab-metrics" class="tab-content">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Cluster Quality Metrics</div>
+    <div class="row">
+      <div class="fgroup"><label>Dataset</label>
+        <div class="pills">
+          <button class="active" id="met-blobs" onclick="setMetDS('blobs')">Blobs</button>
+          <button id="met-moons" onclick="setMetDS('moons')">Moons</button>
+          <button id="met-rings" onclick="setMetDS('rings')">Rings</button>
+          <button id="met-uneven" onclick="setMetDS('uneven')">Uneven</button>
+        </div>
+      </div>
+      <button class="btn btn-teal" onclick="runMetrics()">▶ Compute Metrics (K = 1…8)</button>
+    </div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:260px;">
+        <div style="font-size:0.65rem;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Elbow Curve (Inertia) — look for the "elbow"</div>
+        <canvas id="met-elbow" width="460" height="220"
+          style="width:100%;border:1px solid var(--border);background:var(--ocean);"></canvas>
+      </div>
+      <div style="flex:1;min-width:260px;">
+        <div style="font-size:0.65rem;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Silhouette Score — higher = better</div>
+        <canvas id="met-sil" width="460" height="220"
+          style="width:100%;border:1px solid var(--border);background:var(--ocean);"></canvas>
+      </div>
+    </div>
+    <div style="margin-top:1rem;">
+      <div style="font-size:0.65rem;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Silhouette Plot (per-point, at optimal K)</div>
+      <canvas id="met-silplot" width="900" height="180"
+        style="width:100%;border:1px solid var(--border);background:var(--ocean);"></canvas>
+    </div>
+    <div class="stat-grid" id="met-stats" style="margin-top:1rem;"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══ TAB 6: COMPARE ══ -->
+<div id="tab-compare" class="tab-content">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Side-by-Side Comparison</div>
+    <div class="row">
+      <div class="fgroup"><label>Dataset</label>
+        <div class="pills">
+          <button class="active" id="cmp-blobs" onclick="setCmpDS('blobs')">Blobs</button>
+          <button id="cmp-moons" onclick="setCmpDS('moons')">Moons</button>
+          <button id="cmp-rings" onclick="setCmpDS('rings')">Rings</button>
+          <button id="cmp-uneven" onclick="setCmpDS('uneven')">Uneven</button>
+          <button id="cmp-noisy" onclick="setCmpDS('noisy')">Noisy</button>
+        </div>
+      </div>
+      <button class="btn btn-teal" onclick="runComparison()">▶ Run All</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;" id="cmp-grid"></div>
+    <div class="status-line" id="cmp-status"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══ TAB 7: DATA ══ -->
+<div id="tab-data" class="tab-content">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Dataset</div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;">
+        <div class="drop-zone" onclick="document.getElementById('cl-csv').click()">
+          <input type="file" id="cl-csv" accept=".csv" onchange="loadCSV(this)" style="display:none;">
+          <div class="dicon">📡</div>
+          <h3>Upload CSV</h3>
+          <p>Numeric features only. No labels needed.</p>
+        </div>
+        <div id="csv-status" style="font-size:0.72rem;color:var(--teal2);margin-top:0.4rem;font-family:'Space Mono',monospace;min-height:1rem;"></div>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <div style="font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;">Built-in Datasets</div>
+        <div style="display:flex;flex-direction:column;gap:0.4rem;">
+          <button class="btn btn-teal" onclick="loadBuiltin('blobs')">🫧 Gaussian Blobs</button>
+          <button class="btn" onclick="loadBuiltin('moons')">🌙 Two Moons</button>
+          <button class="btn" onclick="loadBuiltin('rings')">⭕ Concentric Rings</button>
+          <button class="btn" onclick="loadBuiltin('uneven')">⬡ Uneven Density Clusters</button>
+          <button class="btn" onclick="loadBuiltin('noisy')">✦ Blobs with Noise</button>
+          <button class="btn" onclick="loadBuiltin('aniso')">↗ Anisotropic Clusters</button>
+        </div>
+      </div>
+      <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:0.6rem;">
+        <div id="ds-info" style="background:rgba(19,41,82,0.5);border:1px solid var(--border);border-radius:4px;padding:0.8rem;font-size:0.8rem;color:var(--text2);line-height:1.9;font-family:'Space Mono',monospace;">No data loaded.</div>
+        <div id="feat-wrap" style="display:none;">
+          <div style="font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem;">Feature columns (for clustering)</div>
+          <div id="feat-boxes" style="display:flex;flex-wrap:wrap;gap:0.3rem 0.7rem;font-size:0.72rem;font-family:'Space Mono',monospace;"></div>
+        </div>
+        <div id="norm-wrap">
+          <div class="fgroup">
+            <label>Normalisation</label>
+            <div class="pills">
+              <button class="active" id="norm-std" onclick="setNorm('standard')">Z-score</button>
+              <button id="norm-minmax" onclick="setNorm('minmax')">Min-Max</button>
+              <button id="norm-none" onclick="setNorm('none')">None</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="data-section" style="display:none;">
+    <div class="stat-grid" id="data-stats"></div>
+    <div class="card">
+      <div class="card-title">Data Preview</div>
+      <div class="tbl-wrap"><table id="data-table"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Feature Scatter</div>
+      <canvas id="data-scatter" width="560" height="280"
+        style="width:100%;max-width:560px;border:1px solid var(--border);background:var(--ocean);"></canvas>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══ TAB 8: EXPORT ══ -->
+<div id="tab-export" class="tab-content">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Export Results</div>
+    <div style="display:flex;gap:0.7rem;flex-wrap:wrap;">
+      <button class="btn btn-teal" onclick="exportLabels()">⬇ Cluster Labels CSV</button>
+      <button class="btn" onclick="exportSilhouette()">⬇ Silhouette Scores CSV</button>
+      <button class="btn" onclick="exportDataOut()">⬇ Dataset CSV</button>
+      <button class="btn btn-gold" onclick="window.print()">🖨 Print</button>
+    </div>
+  </div>
+  <div class="card" id="export-card">
+    <div class="card-title">Summary Report</div>
+    <div id="report-body"><p style="color:var(--muted);font-family:'Space Mono',monospace;font-size:0.75rem;">Run a clustering algorithm to generate a report.</p></div>
+  </div>
+</div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   GLOBALS
+════════════════════════════════════════ */
+const C = {
+  data: [], features: [], rawRows: [], rawHdrs: [],
+  isCSV: false, normMode: 'standard',
+  labels: [], silhouettes: [],
+  kmModel: null, dbModel: null, hcModel: null,
+};
+
+let kmK=3, kmInit='pp', kmDS='blobs', kmSrc=[], kmState=null;
+let dbEps=0.2, dbMin=4, dbDS='moons', dbSrc=[];
+let hcLink='ward', hcK=3, hcDS='blobs', hcSrc=[], hcModel=null, hcCutH=null;
+let metDS='blobs', cmpDS='blobs';
+
+/* Cluster colour palette */
+const PALETTE=['#00c9b1','#f5c842','#e8614a','#7c6fcd','#4ab8e8','#6be5c3','#ff9f43','#ff6b9d'];
+const NOISE_COL='#ff4444';
+
+/* ════════════════════════════════════════
+   UTILS
+════════════════════════════════════════ */
+function updateSliderPct(el){
+  const pct=(+el.value-+el.min)/(+el.max-+el.min)*100;
+  el.style.setProperty('--spct',pct+'%');
+}
+function switchTab(id){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tabbar button').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const tabs=['concepts','kmeans','dbscan','hierarchical','metrics','compare','data','export'];
+  document.querySelectorAll('.tabbar button')[tabs.indexOf(id)].classList.add('active');
+  if(id==='kmeans')  { resetKMSrc(); drawKMeans(); }
+  if(id==='dbscan')  { resetDBSrc(); runDBSCAN(); }
+  if(id==='hierarchical') { resetHCSrc(); runHierarchical(); }
+  if(id==='metrics') { resetMetSrc(); runMetrics(); }
+  if(id==='compare') { document.getElementById('cmp-grid').innerHTML=''; }
+}
+function rand(a,b){return a+(b-a)*Math.random();}
+function dist2(a,b){return a.reduce((s,v,i)=>s+(v-b[i])**2,0);}
+function dist(a,b){return Math.sqrt(dist2(a,b));}
+function mean(arr){return arr.reduce((s,v)=>s+v,0)/arr.length;}
+
+/* ════════════════════════════════════════
+   DATASET GENERATORS
+════════════════════════════════════════ */
+function genData(name, n=200) {
+  const pts=[];
+  if(name==='blobs'){
+    const centres=[[.22,.25],[.75,.25],[.5,.78],[.2,.7],[.78,.72]].slice(0,3);
+    centres.forEach(([cx,cy],ci)=>{
+      for(let i=0;i<n/3;i++) pts.push({x:cx+rand(-.14,.14),y:cy+rand(-.14,.14),true_k:ci});
+    });
+  } else if(name==='moons'){
+    for(let i=0;i<n;i++){
+      const t=Math.PI*i/n;
+      if(i<n/2) pts.push({x:.15+.7*Math.cos(t)+rand(-.06,.06),y:.35+.45*Math.sin(t)+rand(-.06,.06),true_k:0});
+      else       pts.push({x:.15+.7*(1-Math.cos(t-Math.PI))+rand(-.06,.06),y:.55-.45*Math.sin(t-Math.PI)+rand(-.06,.06),true_k:1});
+    }
+  } else if(name==='rings'){
+    for(let i=0;i<n;i++){
+      const t=2*Math.PI*Math.random();
+      if(i<n/2){const r=.15+rand(-.03,.03);pts.push({x:.5+r*Math.cos(t),y:.5+r*Math.sin(t),true_k:0});}
+      else      {const r=.35+rand(-.03,.03);pts.push({x:.5+r*Math.cos(t),y:.5+r*Math.sin(t),true_k:1});}
+    }
+  } else if(name==='uneven'){
+    const specs=[[.2,.2,.08,80],[.75,.25,.06,40],[.5,.75,.12,60],[.15,.75,.06,20]];
+    specs.forEach(([cx,cy,std,cnt],ci)=>{
+      for(let i=0;i<cnt;i++) pts.push({x:cx+rand(-std,std),y:cy+rand(-std,std),true_k:ci});
+    });
+  } else if(name==='noisy'){
+    // 3 blobs + noise
+    [[.25,.3],[.75,.3],[.5,.75]].forEach(([cx,cy],ci)=>{
+      for(let i=0;i<55;i++) pts.push({x:cx+rand(-.12,.12),y:cy+rand(-.12,.12),true_k:ci});
+    });
+    for(let i=0;i<35;i++) pts.push({x:rand(.05,.95),y:rand(.05,.95),true_k:-1});
+  } else if(name==='aniso'){
+    for(let i=0;i<n/2;i++){
+      const u=rand(-1,1),v=rand(-1,1);
+      pts.push({x:.3+.18*u+.05*v,y:.5+.02*u+.15*v,true_k:0});
+    }
+    for(let i=0;i<n/2;i++){
+      const u=rand(-1,1),v=rand(-1,1);
+      pts.push({x:.7+.18*u+.05*v,y:.5+.02*u+.15*v,true_k:1});
+    }
+  }
+  return pts;
+}
+
+/* ════════════════════════════════════════
+   NORMALISATION
+════════════════════════════════════════ */
+function normalisePoints(pts, mode){
+  if(mode==='none') return pts.map(p=>({...p}));
+  const feats=['x','y'];
+  const norm={};
+  feats.forEach(f=>{
+    const vals=pts.map(p=>p[f]);
+    const mn=mean(vals);
+    const sd=Math.sqrt(mean(vals.map(v=>(v-mn)**2)))||1;
+    const mi=Math.min(...vals), ma=Math.max(...vals);
+    norm[f]={mn,sd,mi,ma};
+  });
+  return pts.map(p=>{
+    const q={...p};
+    feats.forEach(f=>{
+      if(mode==='standard') q[f]=(p[f]-norm[f].mn)/norm[f].sd;
+      else q[f]=(p[f]-norm[f].mi)/(norm[f].ma-norm[f].mi||1);
+    });
+    return q;
+  });
+}
+
+/* ════════════════════════════════════════
+   K-MEANS IMPLEMENTATION
+════════════════════════════════════════ */
+function kmeansInit(pts, k, method){
+  if(method==='random'){
+    const idx=Array.from({length:pts.length},(_,i)=>i);
+    for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+    return idx.slice(0,k).map(i=>({x:pts[i].x,y:pts[i].y}));
+  }
+  // k-means++
+  const c=[pts[Math.floor(Math.random()*pts.length)]];
+  while(c.length<k){
+    const d2=pts.map(p=>Math.min(...c.map(ci=>dist2([p.x,p.y],[ci.x,ci.y]))));
+    const sum=d2.reduce((s,v)=>s+v,0);
+    let r=Math.random()*sum;
+    for(let i=0;i<pts.length;i++){r-=d2[i];if(r<=0){c.push({x:pts[i].x,y:pts[i].y});break;}}
+    if(c.length<k+1-1) c.push({x:pts[pts.length-1].x,y:pts[pts.length-1].y}); // safety
+  }
+  return c.slice(0,k);
+}
+function kmeansAssign(pts, centroids){
+  return pts.map(p=>({
+    ...p,
+    cluster:centroids.reduce((best,c,i)=>{
+      const d=dist2([p.x,p.y],[c.x,c.y]);
+      return d<best.d?{d,i}:best;
+    },{d:Infinity,i:0}).i
+  }));
+}
+function kmeansUpdate(assigned, k){
+  return Array.from({length:k},(_,ki)=>{
+    const grp=assigned.filter(p=>p.cluster===ki);
+    if(!grp.length) return {x:Math.random(),y:Math.random()};
+    return {x:mean(grp.map(p=>p.x)),y:mean(grp.map(p=>p.y))};
+  });
+}
+function inertia(assigned, centroids){
+  return assigned.reduce((s,p)=>s+dist2([p.x,p.y],[centroids[p.cluster].x,centroids[p.cluster].y]),0);
+}
+
+/* ════════════════════════════════════════
+   SILHOUETTE SCORE
+════════════════════════════════════════ */
+function silhouetteScore(pts, labels){
+  const n=pts.length;
+  const k=Math.max(...labels)+1;
+  if(k<2) return 0;
+  const scores=pts.map((p,i)=>{
+    const ci=labels[i];
+    // a: mean dist to same cluster
+    const same=pts.filter((_,j)=>labels[j]===ci&&j!==i);
+    const a=same.length?mean(same.map(q=>dist([p.x,p.y],[q.x,q.y]))):0;
+    // b: min mean dist to other clusters
+    let b=Infinity;
+    for(let ck=0;ck<k;ck++){
+      if(ck===ci) continue;
+      const other=pts.filter((_,j)=>labels[j]===ck);
+      if(!other.length) continue;
+      const m=mean(other.map(q=>dist([p.x,p.y],[q.x,q.y])));
+      if(m<b) b=m;
+    }
+    if(b===Infinity) return 0;
+    return (b-a)/Math.max(a,b);
+  });
+  return mean(scores);
+}
+
+/* ════════════════════════════════════════
+   DBSCAN IMPLEMENTATION
+════════════════════════════════════════ */
+function runDBSCANAlgo(pts, eps, minPts){
+  const n=pts.length;
+  const labels=Array(n).fill(-1); // -1 = noise, 0+ = cluster
+  const visited=Array(n).fill(false);
+  const isCore=Array(n).fill(false);
+  // compute neighbourhoods
+  const nbrs=pts.map((p,i)=>pts.map((_,j)=>j).filter(j=>j!==i&&dist([p.x,p.y],[pts[j].x,pts[j].y])<=eps));
+  nbrs.forEach((nb,i)=>{if(nb.length>=minPts-1)isCore[i]=true;}); // -1 because nbrs excludes self
+  let cluster=0;
+  for(let i=0;i<n;i++){
+    if(visited[i]) continue;
+    visited[i]=true;
+    if(!isCore[i]) continue; // noise for now
+    labels[i]=cluster;
+    const queue=[...nbrs[i]];
+    while(queue.length){
+      const j=queue.shift();
+      if(!visited[j]){
+        visited[j]=true;
+        if(isCore[j]) queue.push(...nbrs[j].filter(q=>!visited[q]));
+      }
+      if(labels[j]===-1) labels[j]=cluster;
+    }
+    cluster++;
+  }
+  return {labels, isCore, nbrs};
+}
+
+/* ════════════════════════════════════════
+   HIERARCHICAL (Agglomerative)
+════════════════════════════════════════ */
+function agglomerative(pts, linkage){
+  const n=pts.length;
+  // each point starts in own cluster
+  let clusters=pts.map((_,i)=>({id:i,members:[i],x:pts[i].x,y:pts[i].y}));
+  const merges=[]; // [{a, b, dist, newId, size}]
+  let nextId=n;
+  while(clusters.length>1){
+    let best={d:Infinity,ai:-1,bi:-1};
+    for(let i=0;i<clusters.length;i++){
+      for(let j=i+1;j<clusters.length;j++){
+        const d=linkDist(clusters[i],clusters[j],pts,linkage);
+        if(d<best.d){best={d,ai:i,bi:j};}
+      }
+    }
+    const ca=clusters[best.ai], cb=clusters[best.bi];
+    const merged={
+      id:nextId++,
+      members:[...ca.members,...cb.members],
+      x:mean([...ca.members,...cb.members].map(i=>pts[i].x)),
+      y:mean([...ca.members,...cb.members].map(i=>pts[i].y)),
+    };
+    merges.push({a:ca.id,b:cb.id,d:best.d,id:merged.id,size:merged.members.length,members:merged.members});
+    clusters=[...clusters.filter((_,i)=>i!==best.ai&&i!==best.bi),merged];
+  }
+  return merges;
+}
+function linkDist(ca, cb, pts, linkage){
+  const pairs=[];
+  ca.members.forEach(i=>cb.members.forEach(j=>pairs.push(dist([pts[i].x,pts[i].y],[pts[j].x,pts[j].y]))));
+  if(linkage==='single')   return Math.min(...pairs);
+  if(linkage==='complete') return Math.max(...pairs);
+  if(linkage==='average')  return mean(pairs);
+  if(linkage==='ward'){
+    // Ward: increase in variance
+    const allM=[...ca.members,...cb.members];
+    const cx=mean(allM.map(i=>pts[i].x)), cy=mean(allM.map(i=>pts[i].y));
+    const cax=mean(ca.members.map(i=>pts[i].x)), cay=mean(ca.members.map(i=>pts[i].y));
+    const cbx=mean(cb.members.map(i=>pts[i].x)), cby=mean(cb.members.map(i=>pts[i].y));
+    return (ca.members.length*cb.members.length)/(ca.members.length+cb.members.length)*
+           dist2([cax,cay],[cbx,cby]);
+  }
+  return mean(pairs);
+}
+function labelsFromMerges(merges, k, n){
+  if(k>=n) return Array.from({length:n},(_,i)=>i%8);
+  // replay merges, stop at n-k merges
+  const parent=Array.from({length:n},(_,i)=>i);
+  const stop=n-k;
+  for(let m=0;m<stop&&m<merges.length;m++){
+    const {members,id}=merges[m];
+    members.forEach(i=>{
+      let r=i; const visited=new Set();
+      while(parent[r]!==r&&!visited.has(r)){visited.add(r);r=parent[r];}
+      parent[i]=id<n?id:members[0];
+    });
+  }
+  // after n-k merges, remaining clusters = k groups
+  // simpler: replay merges to get n-k groups
+  let groups=Array.from({length:n},(_,i)=>[i]);
+  for(let m=0;m<n-k&&m<merges.length;m++){
+    const {a,b,members}=merges[m];
+    // find group containing a or b
+    // use members directly
+    const newG=members;
+    groups=groups.filter(g=>!g.some(i=>newG.includes(i)));
+    groups.push(newG);
+  }
+  const labels=Array(n).fill(0);
+  groups.forEach((g,li)=>g.forEach(i=>labels[i]=li));
+  return labels;
+}
+
+/* ════════════════════════════════════════
+   CANVAS DRAWING
+════════════════════════════════════════ */
+function canvasSetup(canvas){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--ocean').trim()||'#0a1628';
+  ctx.fillRect(0,0,W,H);
+  // subtle grid
+  ctx.strokeStyle='rgba(30,58,110,0.3)';ctx.lineWidth=1;
+  [0.25,0.5,0.75].forEach(v=>{
+    ctx.beginPath();ctx.moveTo(W*v,0);ctx.lineTo(W*v,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,H*v);ctx.lineTo(W,H*v);ctx.stroke();
+  });
+  return {ctx,W,H};
+}
+function ptToCanvas(p,W,H,PAD=28,xmin=0,xmax=1,ymin=0,ymax=1){
+  return [PAD+(p.x-xmin)/(xmax-xmin)*(W-2*PAD), PAD+(1-(p.y-ymin)/(ymax-ymin))*(H-2*PAD)];
+}
+function drawAxes(ctx,W,H,PAD,pts){
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys);
+  ctx.fillStyle='rgba(74,106,138,0.7)';ctx.font='8px Space Mono';ctx.textAlign='center';
+  [0,0.5,1].forEach(v=>{
+    const xv=(xmin+v*(xmax-xmin)).toFixed(1);
+    const yv=(ymin+v*(ymax-ymin)).toFixed(1);
+    ctx.fillText(xv,PAD+v*(W-2*PAD),H-PAD+11);
+    ctx.textAlign='right';ctx.fillText(yv,PAD-2,PAD+(1-v)*(H-2*PAD)+3);ctx.textAlign='center';
+  });
+  return {xmin,xmax,ymin,ymax};
+}
+function getBounds(pts){
+  if(!pts.length) return {xmin:0,xmax:1,ymin:0,ymax:1};
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);
+  const xr=Math.max(...xs)-Math.min(...xs)||1,yr=Math.max(...ys)-Math.min(...ys)||1;
+  return {xmin:Math.min(...xs)-xr*.12,xmax:Math.max(...xs)+xr*.12,
+          ymin:Math.min(...ys)-yr*.12,ymax:Math.max(...ys)+yr*.12};
+}
+
+/* ════════════════════════════════════════
+   TAB 2: K-MEANS
+════════════════════════════════════════ */
+function setKMPill(){
+  document.getElementById('km-init-pp').classList.toggle('active',kmInit==='pp');
+  document.getElementById('km-init-rand').classList.toggle('active',kmInit==='random');
+}
+function setKMDS(name){
+  kmDS=name; kmSrc=[];
+  ['blobs','moons','rings','uneven'].forEach(s=>document.getElementById('kmd-'+s)?.classList.toggle('active',s===name));
+}
+function resetKMSrc(){if(!kmSrc.length){kmSrc=genData(kmDS,240);}}
+function kmReset(){
+  kmSrc=genData(kmDS,240);
+  kmState=null;
+  document.getElementById('km-iter').textContent='0';
+  document.getElementById('km-inertia').textContent='—';
+  document.getElementById('km-sil').textContent='—';
+  document.getElementById('km-phase').textContent='Not started';
+  document.getElementById('km-converged').style.display='none';
+  drawKMeans();
+}
+function kmStep(){
+  resetKMSrc();
+  const pts=kmSrc;
+  if(!kmState){
+    const centroids=kmeansInit(pts,kmK,kmInit);
+    const assigned=kmeansAssign(pts,centroids);
+    kmState={centroids,assigned,iter:0,converged:false};
+    document.getElementById('km-phase').textContent='Initialised centroids';
+  } else if(!kmState.converged){
+    const newCentroids=kmeansUpdate(kmState.assigned,kmK);
+    const newAssigned=kmeansAssign(pts,newCentroids);
+    const moved=newCentroids.some((c,i)=>dist([c.x,c.y],[kmState.centroids[i].x,kmState.centroids[i].y])>1e-6);
+    kmState={centroids:newCentroids,assigned:newAssigned,iter:kmState.iter+1,converged:!moved};
+    document.getElementById('km-phase').textContent=moved?`Iteration ${kmState.iter} — updating`:'Converged!';
+    if(!moved) document.getElementById('km-converged').style.display='';
+  }
+  // metrics
+  const ine=inertia(kmState.assigned,kmState.centroids);
+  const labels=kmState.assigned.map(p=>p.cluster);
+  const sil=silhouetteScore(pts,labels);
+  document.getElementById('km-iter').textContent=kmState.iter;
+  document.getElementById('km-inertia').textContent=ine.toFixed(2);
+  document.getElementById('km-sil').textContent=sil.toFixed(3);
+  C.labels=labels;
+  drawKMeans();
+}
+function drawKMeans(){
+  const canvas=document.getElementById('km-canvas');if(!canvas)return;
+  const {ctx,W,H}=canvasSetup(canvas);
+  const pts=kmSrc;if(!pts.length)return;
+  const PAD=30;
+  const {xmin,xmax,ymin,ymax}=getBounds(pts);
+  const toC=p=>ptToCanvas(p,W,H,PAD,xmin,xmax,ymin,ymax);
+  // draw points
+  pts.forEach((p,i)=>{
+    const cl=kmState?kmState.assigned[i].cluster:-1;
+    const [cx,cy]=toC(p);
+    ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);
+    ctx.fillStyle=cl>=0?PALETTE[cl%PALETTE.length]+'bb':'rgba(74,106,138,0.5)';
+    ctx.fill();
+  });
+  // draw centroids and lines
+  if(kmState){
+    kmState.centroids.forEach((c,ci)=>{
+      const [cx,cy]=toC(c);
+      // glow
+      const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,18);
+      grad.addColorStop(0,PALETTE[ci%PALETTE.length]+'50');
+      grad.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(cx,cy,18,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+      // centroid marker
+      ctx.beginPath();
+      ctx.moveTo(cx-9,cy);ctx.lineTo(cx+9,cy);
+      ctx.moveTo(cx,cy-9);ctx.lineTo(cx,cy+9);
+      ctx.strokeStyle=PALETTE[ci%PALETTE.length];ctx.lineWidth=2.5;ctx.stroke();
+      ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);
+      ctx.fillStyle='#fff';ctx.fill();
+      ctx.strokeStyle=PALETTE[ci%PALETTE.length];ctx.lineWidth=2;ctx.stroke();
+    });
+  }
+  drawAxes(ctx,W,H,PAD,pts);
+  // legend
+  const legend=document.getElementById('km-legend');
+  if(kmState){
+    legend.innerHTML=kmState.centroids.map((_,i)=>
+      `<div class="cl-item"><div class="cl-dot" style="background:${PALETTE[i%PALETTE.length]}"></div>Cluster ${i}</div>`
+    ).join('');
+  }
+}
+
+/* ════════════════════════════════════════
+   TAB 3: DBSCAN
+════════════════════════════════════════ */
+function setDBDS(name){
+  dbDS=name;dbSrc=[];
+  ['moons','rings','blobs','noisy'].forEach(s=>document.getElementById('dbd-'+s)?.classList.toggle('active',s===name));
+  runDBSCAN();
+}
+function resetDBSrc(){if(!dbSrc.length)dbSrc=genData(dbDS,200);}
+function runDBSCAN(){
+  resetDBSrc();
+  const pts=dbSrc;
+  // normalise to [0,1] for distance calculation
+  const {xmin,xmax,ymin,ymax}=getBounds(pts);
+  const norm=pts.map(p=>({x:(p.x-xmin)/(xmax-xmin||1),y:(p.y-ymin)/(ymax-ymin||1)}));
+  const res=runDBSCANAlgo(norm,dbEps,dbMin);
+  C.dbResult=res; C.dbPts=pts;
+  const nClusters=Math.max(...res.labels)+1;
+  const nNoise=res.labels.filter(l=>l===-1).length;
+  const nCore=res.isCore.filter(Boolean).length;
+  document.getElementById('db-nclusters').textContent=nClusters>0?nClusters:0;
+  document.getElementById('db-noise').textContent=nNoise;
+  document.getElementById('db-core').textContent=nCore;
+  document.getElementById('db-status').textContent=
+    `Found ${nClusters} cluster${nClusters!==1?'s':''} · ${nNoise} noise points · ε=${dbEps.toFixed(2)} · minPts=${dbMin}`;
+  drawDBSCAN(pts,res,dbEps,xmin,xmax,ymin,ymax);
+  // legend
+  const legend=document.getElementById('db-legend');
+  const clrs=Array.from({length:nClusters},(_,i)=>PALETTE[i%PALETTE.length]);
+  legend.innerHTML=clrs.map((c,i)=>`<div class="cl-item"><div class="cl-dot" style="background:${c}"></div>Cluster ${i}</div>`).join('')+
+    `<div class="cl-item"><div class="cl-dot" style="background:${NOISE_COL};border-radius:2px;"></div>Noise</div>`;
+}
+function drawDBSCAN(pts,res,eps,xmin,xmax,ymin,ymax){
+  const canvas=document.getElementById('db-canvas');if(!canvas)return;
+  const {ctx,W,H}=canvasSetup(canvas);
+  const PAD=30;
+  const toC=p=>ptToCanvas(p,W,H,PAD,xmin,xmax,ymin,ymax);
+  const xscale=(W-2*PAD)/(xmax-xmin||1);
+  const epsPx=eps*xscale;
+  pts.forEach((p,i)=>{
+    const [cx,cy]=toC(p);
+    const cl=res.labels[i];
+    const core=res.isCore[i];
+    const col=cl===-1?NOISE_COL:PALETTE[cl%PALETTE.length];
+    if(core){
+      // ε circle
+      ctx.beginPath();ctx.arc(cx,cy,epsPx,0,Math.PI*2);
+      ctx.strokeStyle=col+'25';ctx.lineWidth=1;ctx.stroke();
+    }
+    const r=core?6:cl>=0?4:3;
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle=cl===-1?NOISE_COL+'80':col+'cc';ctx.fill();
+    if(cl===-1){
+      // X marker for noise
+      ctx.strokeStyle=NOISE_COL;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(cx-4,cy-4);ctx.lineTo(cx+4,cy+4);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx+4,cy-4);ctx.lineTo(cx-4,cy+4);ctx.stroke();
+    }
+  });
+  drawAxes(ctx,W,H,PAD,pts);
+}
+
+/* ════════════════════════════════════════
+   TAB 4: HIERARCHICAL
+════════════════════════════════════════ */
+function setHCLink(link){
+  hcLink=link;hcModel=null;
+  ['ward','complete','average','single'].forEach(s=>document.getElementById('hc-'+s)?.classList.toggle('active',s===link));
+  runHierarchical();
+}
+function setHCDS(name){
+  hcDS=name;hcSrc=[];hcModel=null;
+  ['blobs','moons','rings'].forEach(s=>document.getElementById('hcd-'+s)?.classList.toggle('active',s===name));
+  runHierarchical();
+}
+function resetHCSrc(){if(!hcSrc.length)hcSrc=genData(hcDS,60);}// small for O(n²)
+function runHierarchical(){
+  resetHCSrc();
+  const pts=hcSrc;
+  const norm=normalisePoints(pts,'minmax');
+  hcModel=agglomerative(norm,hcLink);
+  document.getElementById('hc-status').textContent=
+    `${pts.length} points · ${hcLink} linkage · cut at K=${hcK}`;
+  drawDendrogram();
+}
+function drawDendrogram(){
+  if(!hcModel||!hcSrc.length) return;
+  const pts=hcSrc;
+  const n=pts.length;
+  const merges=hcModel;
+  const labels=labelsFromMerges(merges,hcK,n);
+  // scatter
+  const sc=document.getElementById('hc-scatter');
+  if(sc){
+    const {ctx:sctx,W:sW,H:sH}=canvasSetup(sc);
+    const PAD=28;
+    const {xmin,xmax,ymin,ymax}=getBounds(pts);
+    const toC=p=>ptToCanvas(p,sW,sH,PAD,xmin,xmax,ymin,ymax);
+    pts.forEach((p,i)=>{
+      const [cx,cy]=toC(p);
+      ctx_circle(sctx,cx,cy,5,PALETTE[labels[i]%PALETTE.length]+'cc',null,0);
+    });
+    drawAxes(sctx,sW,sH,PAD,pts);
+    // legend
+    const k=Math.max(...labels)+1;
+    document.getElementById('hc-legend').innerHTML=
+      Array.from({length:k},(_,i)=>`<div class="cl-item"><div class="cl-dot" style="background:${PALETTE[i%PALETTE.length]}"></div>Cluster ${i}</div>`).join('');
+  }
+  // dendrogram
+  const dc=document.getElementById('hc-dendro');
+  if(!dc)return;
+  const {ctx,W,H}=canvasSetup(dc);
+  const LPAD=36,RPAD=12,TPAD=12,BPAD=24;
+  const iW=W-LPAD-RPAD,iH=H-TPAD-BPAD;
+  if(!merges.length) return;
+  const maxD=Math.max(...merges.map(m=>m.d))*1.08;
+  const yScale=v=>TPAD+iH-(v/maxD)*iH;
+  // leaf x positions
+  const leafX={};
+  Array.from({length:n},(_,i)=>i).forEach((i,li)=>leafX[i]=LPAD+li*iW/(n-1||1));
+  // compute x positions for merged nodes
+  const nodeX={};
+  merges.forEach(m=>{
+    // x = mean of children
+    const getX=(id)=>{
+      if(id<n) return leafX[id]??LPAD;
+      return nodeX[id]??LPAD;
+    };
+    const childIds=[];
+    // find direct children
+    // Actually, a,b are cluster ids at merge time - need to track
+    nodeX[m.id]=(getX(m.a)+getX(m.b))/2;
+    m.nodeX=nodeX[m.id];
+    m.ya=yScale(merges.find(pm=>pm.id===m.a)?.d??0);
+    m.yb=yScale(merges.find(pm=>pm.id===m.b)?.d??0);
+  });
+  // draw
+  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--border2').trim()||'#2a5099';
+  ctx.lineWidth=1.5;
+  // determine cut height
+  const cutK=hcK;
+  const cutH=merges.length>=cutK?merges[merges.length-cutK]?.d:maxD;
+  const cutY=yScale(cutH||0);
+  // draw merges
+  merges.forEach((m,mi)=>{
+    const ax=nodeX[m.a]??leafX[m.a]??LPAD;
+    const bx=nodeX[m.b]??leafX[m.b]??LPAD;
+    const my=yScale(m.d);
+    const ay=merges.find(pm=>pm.id===m.a)?yScale(merges.find(pm=>pm.id===m.a).d):H-BPAD;
+    const by=merges.find(pm=>pm.id===m.b)?yScale(merges.find(pm=>pm.id===m.b).d):H-BPAD;
+    const aboveCut=m.d>=(cutH||0);
+    ctx.strokeStyle=aboveCut?'rgba(74,106,138,0.5)':'rgba(0,201,177,0.7)';
+    ctx.lineWidth=aboveCut?1:2;
+    ctx.beginPath();
+    ctx.moveTo(ax,ay);ctx.lineTo(ax,my);
+    ctx.lineTo(bx,my);ctx.lineTo(bx,by);
+    ctx.stroke();
+  });
+  // leaf labels
+  Array.from({length:n}).forEach((_,i)=>{
+    ctx.fillStyle='rgba(74,106,138,0.6)';ctx.font='8px Space Mono';ctx.textAlign='center';
+    ctx.fillText(i+1,leafX[i]??LPAD,H-BPAD+11);
+  });
+  // y axis
+  ctx.textAlign='right';ctx.fillStyle='rgba(74,106,138,0.7)';ctx.font='8px Space Mono';
+  [0,0.5,1].forEach(v=>{
+    const y=TPAD+v*iH;
+    ctx.fillText((maxD*(1-v/1.08)).toFixed(2),LPAD-2,y+3);
+    ctx.beginPath();ctx.moveTo(LPAD,y);ctx.lineTo(LPAD-4,y);
+    ctx.strokeStyle='rgba(74,106,138,0.4)';ctx.lineWidth=1;ctx.stroke();
+  });
+  // cut line
+  ctx.beginPath();ctx.moveTo(LPAD,cutY);ctx.lineTo(W-RPAD,cutY);
+  ctx.strokeStyle='rgba(245,200,66,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(245,200,66,0.9)';ctx.font='bold 9px Space Mono';ctx.textAlign='right';
+  ctx.fillText(`K=${cutK}`,W-RPAD-2,cutY-5);
+}
+function ctx_circle(ctx,cx,cy,r,fill,stroke,lw){
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
+}
+
+/* ════════════════════════════════════════
+   TAB 5: METRICS
+════════════════════════════════════════ */
+function setMetDS(name){
+  metDS=name;
+  ['blobs','moons','rings','uneven'].forEach(s=>document.getElementById('met-'+s)?.classList.toggle('active',s===name));
+  runMetrics();
+}
+function resetMetSrc(){/* use fresh data each time */}
+function runMetrics(){
+  const pts=genData(metDS,200);
+  const ks=Array.from({length:8},(_,i)=>i+1);
+  const inertias=[], silScores=[];
+  let bestK=2, bestSil=-1, bestLabels=[], bestPts=pts;
+  ks.forEach(k=>{
+    if(k===1){inertias.push(pts.reduce((s,p)=>{const mx=mean(pts.map(q=>q.x)),my=mean(pts.map(q=>q.y));return s+dist2([p.x,p.y],[mx,my]);},0));silScores.push(0);return;}
+    // run kmeans 3x, pick best
+    let bestIne=Infinity, bestAss=null, bestCen=null;
+    for(let r=0;r<3;r++){
+      const cen=kmeansInit(pts,k,'pp');
+      let ass=kmeansAssign(pts,cen);
+      for(let it=0;it<50;it++){const nc=kmeansUpdate(ass,k);const na=kmeansAssign(pts,nc);const moved=nc.some((c,i)=>dist([c.x,c.y],[cen[i].x,cen[i].y])>1e-6);ass=na;if(!moved)break;}
+      const ine=inertia(ass,kmeansUpdate(ass,k));
+      if(ine<bestIne){bestIne=ine;bestAss=ass;bestCen=kmeansUpdate(ass,k);}
+    }
+    inertias.push(bestIne);
+    const labels=bestAss.map(p=>p.cluster);
+    const sil=silhouetteScore(pts,labels);
+    silScores.push(sil);
+    if(sil>bestSil){bestSil=sil;bestK=k;bestLabels=labels;}
+  });
+  // draw elbow
+  drawLineChart(document.getElementById('met-elbow'),ks,inertias,'Inertia','var(--teal3)','K');
+  drawLineChart(document.getElementById('met-sil'),ks.slice(1),silScores.slice(1),'Silhouette','var(--violet2)','K');
+  // silhouette plot at best K
+  drawSilPlot(document.getElementById('met-silplot'),pts,bestLabels);
+  // stats
+  document.getElementById('met-stats').innerHTML=`
+    <div class="stat-box"><div class="sv" style="color:var(--teal3)">${bestK}</div><div class="sl">Optimal K</div></div>
+    <div class="stat-box"><div class="sv" style="color:var(--violet2)">${bestSil.toFixed(3)}</div><div class="sl">Best Silhouette</div></div>
+    <div class="stat-box"><div class="sv" style="color:var(--gold)">${inertias[bestK-1]?.toFixed(1)||'—'}</div><div class="sl">Inertia @ opt K</div></div>
+    <div class="stat-box"><div class="sv" style="color:var(--text2)">${pts.length}</div><div class="sl">Points</div></div>`;
+}
+function drawLineChart(canvas,xs,ys,yLabel,lineCol,xLabel){
+  if(!canvas)return;
+  const {ctx,W,H}=canvasSetup(canvas);
+  const pad={t:12,r:16,b:28,l:52};
+  const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b;
+  const maxY=Math.max(...ys)*1.05,minY=Math.min(...ys)*0.95;
+  const sx=i=>pad.l+(i/(xs.length-1))*iW;
+  const sy=v=>pad.t+iH-(v-minY)/(maxY-minY||1)*iH;
+  // grid
+  ctx.strokeStyle='rgba(30,58,110,0.4)';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(v=>{
+    const gy=pad.t+v*iH;ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(W-pad.r,gy);ctx.stroke();
+    ctx.fillStyle='rgba(74,106,138,0.7)';ctx.font='7px Space Mono';ctx.textAlign='right';
+    ctx.fillText((maxY-(v*(maxY-minY))).toFixed(2),pad.l-3,gy+3);
+  });
+  xs.forEach((x,i)=>{
+    ctx.fillStyle='rgba(74,106,138,0.7)';ctx.font='8px Space Mono';ctx.textAlign='center';
+    ctx.fillText(x,sx(i),H-pad.b+11);
+  });
+  // line
+  ctx.beginPath();
+  ys.forEach((y,i)=>{i===0?ctx.moveTo(sx(i),sy(y)):ctx.lineTo(sx(i),sy(y));});
+  ctx.strokeStyle=lineCol;ctx.lineWidth=2.5;ctx.stroke();
+  // dots
+  ys.forEach((y,i)=>{
+    ctx.beginPath();ctx.arc(sx(i),sy(y),4,0,Math.PI*2);
+    ctx.fillStyle=lineCol;ctx.fill();
+    ctx.strokeStyle='var(--ocean)';ctx.lineWidth=2;ctx.stroke();
+  });
+  ctx.fillStyle='rgba(74,106,138,0.7)';ctx.font='bold 8px Space Mono';ctx.textAlign='center';
+  ctx.fillText(xLabel+' →',W/2,H-2);
+  ctx.save();ctx.translate(12,pad.t+iH/2);ctx.rotate(-Math.PI/2);ctx.fillText(yLabel,0,0);ctx.restore();
+}
+function drawSilPlot(canvas,pts,labels){
+  if(!canvas)return;
+  const {ctx,W,H}=canvasSetup(canvas);
+  const k=Math.max(...labels)+1;
+  const pad={t:8,r:12,b:16,l:40};
+  const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b;
+  // compute per-point silhouettes
+  const n=pts.length;
+  const scores=pts.map((p,i)=>{
+    const ci=labels[i];
+    const same=pts.filter((_,j)=>labels[j]===ci&&j!==i);
+    const a=same.length?mean(same.map(q=>dist([p.x,p.y],[q.x,q.y]))):0;
+    let b=Infinity;
+    for(let ck=0;ck<k;ck++){
+      if(ck===ci)continue;
+      const other=pts.filter((_,j)=>labels[j]===ck);
+      if(!other.length)continue;
+      const m=mean(other.map(q=>dist([p.x,p.y],[q.x,q.y])));
+      if(m<b)b=m;
+    }
+    return{s:b===Infinity?0:(b-a)/Math.max(a,b),cluster:ci};
+  }).sort((a,b)=>a.cluster-b.cluster||b.s-a.s);
+  const barW=iW/n;
+  scores.forEach(({s,cluster},i)=>{
+    const bh=Math.abs(s)*iH/2;
+    const by=s>=0?iH/2-bh:iH/2;
+    ctx.fillStyle=PALETTE[cluster%PALETTE.length]+(s>=0?'cc':'66');
+    ctx.fillRect(pad.l+i*barW,pad.t+by,Math.max(1,barW-0.5),bh);
+  });
+  // zero line
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t+iH/2);ctx.lineTo(W-pad.r,pad.t+iH/2);
+  ctx.strokeStyle='rgba(74,106,138,0.5)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='rgba(74,106,138,0.7)';ctx.font='7px Space Mono';ctx.textAlign='right';
+  ctx.fillText('1.0',pad.l-2,pad.t+4);ctx.fillText('0',pad.l-2,pad.t+iH/2+4);ctx.fillText('-1',pad.l-2,pad.t+iH+4);
+  ctx.textAlign='center';ctx.fillText('← Points sorted by cluster & score →',W/2,H-2);
+}
+
+/* ════════════════════════════════════════
+   TAB 6: COMPARE
+════════════════════════════════════════ */
+function setCmpDS(name){
+  cmpDS=name;
+  ['blobs','moons','rings','uneven','noisy'].forEach(s=>document.getElementById('cmp-'+s)?.classList.toggle('active',s===name));
+}
+function runComparison(){
+  const pts=genData(cmpDS,200);
+  const norm=pts.map(p=>({...p}));
+  document.getElementById('cmp-status').textContent='Running all algorithms…';
+  const configs=[
+    {name:'K-Means K=3',col:'var(--teal3)',
+     run:()=>{
+       let cen=kmeansInit(pts,3,'pp'),ass=kmeansAssign(pts,cen);
+       for(let i=0;i<50;i++){const nc=kmeansUpdate(ass,3);ass=kmeansAssign(pts,nc);cen=nc;}
+       return ass.map(p=>p.cluster);
+     }},
+    {name:'K-Means K=4',col:'var(--gold)',
+     run:()=>{
+       let cen=kmeansInit(pts,4,'pp'),ass=kmeansAssign(pts,cen);
+       for(let i=0;i<50;i++){const nc=kmeansUpdate(ass,4);ass=kmeansAssign(pts,nc);cen=nc;}
+       return ass.map(p=>p.cluster);
+     }},
+    {name:'DBSCAN ε=0.18',col:'var(--violet2)',
+     run:()=>{
+       const {xmin,xmax,ymin,ymax}=getBounds(pts);
+       const n=pts.map(p=>({x:(p.x-xmin)/(xmax-xmin||1),y:(p.y-ymin)/(ymax-ymin||1)}));
+       const res=runDBSCANAlgo(n,0.18,4);
+       return res.labels;
+     }},
+    {name:'DBSCAN ε=0.28',col:'var(--coral2)',
+     run:()=>{
+       const {xmin,xmax,ymin,ymax}=getBounds(pts);
+       const n2=pts.map(p=>({x:(p.x-xmin)/(xmax-xmin||1),y:(p.y-ymin)/(ymax-ymin||1)}));
+       const res=runDBSCANAlgo(n2,0.28,4);
+       return res.labels;
+     }},
+    {name:'Hierarchical Ward',col:'var(--mint)',
+     run:()=>{
+       const sm=pts.slice(0,80);// small for speed
+       const n3=normalisePoints(sm,'minmax');
+       const merges=agglomerative(n3,'ward');
+       const labs=labelsFromMerges(merges,3,sm.length);
+       // extend to full pts by nearest neighbour
+       const fullLabs=pts.map(p=>{
+         let bi=0,bd=Infinity;
+         sm.forEach((s,i)=>{const d=dist2([p.x,p.y],[s.x,s.y]);if(d<bd){bd=d;bi=i;}});
+         return labs[bi];
+       });
+       return fullLabs;
+     }},
+  ];
+  const grid=document.getElementById('cmp-grid');
+  grid.innerHTML=configs.map((_,i)=>`
+    <div style="background:rgba(13,31,60,0.7);border:1px solid var(--border);border-radius:5px;padding:0.7rem;">
+      <div style="font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:0.06em;text-transform:uppercase;color:${configs[i].col};margin-bottom:0.4rem;">${configs[i].name}</div>
+      <canvas id="cmp-c-${i}" width="240" height="200" style="width:100%;border:1px solid var(--border);background:var(--ocean);display:block;"></canvas>
+      <div id="cmp-s-${i}" style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:0.3rem;"></div>
+    </div>`).join('');
+  requestAnimationFrame(()=>{
+    configs.forEach((cfg,i)=>{
+      const labels=cfg.run();
+      const canvas=document.getElementById(`cmp-c-${i}`);
+      if(!canvas)return;
+      const {ctx,W,H}=canvasSetup(canvas);
+      const PAD=16;
+      const {xmin,xmax,ymin,ymax}=getBounds(pts);
+      pts.forEach((p,j)=>{
+        const cl=labels[j];
+        const [cx,cy]=ptToCanvas(p,W,H,PAD,xmin,xmax,ymin,ymax);
+        ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);
+        ctx.fillStyle=cl===-1?NOISE_COL+'99':PALETTE[cl%PALETTE.length]+'cc';ctx.fill();
+      });
+      const k=Math.max(...labels.filter(l=>l>=0))+1;
+      const validLabels=labels.filter(l=>l>=0);
+      const validPts=pts.filter((_,j)=>labels[j]>=0);
+      const sil=validLabels.length>1&&k>1?silhouetteScore(validPts,validLabels):0;
+      const noise=labels.filter(l=>l===-1).length;
+      const el=document.getElementById(`cmp-s-${i}`);
+      if(el)el.textContent=`K=${k} · sil=${sil.toFixed(3)}${noise?` · noise=${noise}`:''}`;
+    });
+    document.getElementById('cmp-status').textContent='✓ All algorithms complete.';
+  });
+}
+
+/* ════════════════════════════════════════
+   TAB 7: DATA
+════════════════════════════════════════ */
+let normMode='standard';
+function setNorm(mode){
+  normMode=mode;C.normMode=mode;
+  ['std','minmax','none'].forEach(s=>document.getElementById('norm-'+s)?.classList.toggle('active',s===mode.replace('standard','std')));
+  if(C.data.length) rebuildNorm();
+}
+function rebuildNorm(){
+  const pts=C.rawPts||[];
+  if(!pts.length)return;
+  C.data=normalisePoints(pts,normMode);
+  renderDataTab();
+}
+function loadBuiltin(name){
+  C.isCSV=false;
+  document.getElementById('feat-wrap').style.display='none';
+  const pts=genData(name,200);
+  C.rawPts=pts;
+  C.features=['x','y'];
+  C.data=normalisePoints(pts,normMode);
+  updateDSInfo(name,pts.length);
+  renderDataTab();
+}
+function loadCSV(input){
+  const f=input.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.trim().split(/\r?\n/);
+    const hdrs=lines[0].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+    const rows=lines.slice(1).map(line=>{
+      const vals=line.split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+      const obj={};hdrs.forEach((h,i)=>{const v=vals[i];obj[h]=isNaN(v)||v===''?v:+v;});
+      return obj;
+    }).filter(r=>Object.values(r).every(v=>v!==undefined&&v!==''));
+    if(rows.length<5){document.getElementById('csv-status').textContent='Error: need ≥5 rows';return;}
+    C.rawRows=rows;C.rawHdrs=hdrs;C.isCSV=true;
+    document.getElementById('csv-status').textContent=`✓ ${rows.length} rows · ${hdrs.length} cols`;
+    const numCols=hdrs.filter(h=>rows.every(r=>typeof r[h]==='number'));
+    document.getElementById('feat-wrap').style.display='';
+    const box=document.getElementById('feat-boxes');
+    box.innerHTML=numCols.map(f=>`<label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;white-space:nowrap;"><input type="checkbox" value="${f}" checked style="accent-color:var(--teal);"><span style="color:var(--text2)">${f}</span></label>`).join('');
+    box.querySelectorAll('input').forEach(cb=>cb.addEventListener('change',applyCSVCols));
+    applyCSVCols();
+  };
+  reader.readAsText(f);
+}
+function applyCSVCols(){
+  const checked=[...document.querySelectorAll('#feat-boxes input:checked')].map(cb=>cb.value);
+  if(checked.length<2){document.getElementById('csv-status').textContent='Select ≥2 features';return;}
+  C.features=checked;
+  const pts=C.rawRows.map(r=>({x:r[checked[0]],y:r[checked[1]],vec:checked.map(f=>r[f])}));
+  C.rawPts=pts;
+  C.data=normalisePoints(pts,normMode);
+  updateDSInfo('CSV',pts.length);
+  renderDataTab();
+}
+function updateDSInfo(name,n){
+  document.getElementById('ds-info').innerHTML=
+    `Dataset: <span style="color:var(--teal3)">${name}</span><br>N = <span style="color:var(--gold)">${n}</span><br>Features: <span style="color:var(--violet2)">${C.features.join(', ')}</span><br>Norm: <span style="color:var(--mint)">${normMode}</span>`;
+}
+function renderDataTab(){
+  document.getElementById('data-section').style.display='';
+  const pts=C.data||[];
+  document.getElementById('data-stats').innerHTML=`
+    <div class="stat-box"><div class="sv" style="color:var(--teal3)">${pts.length}</div><div class="sl">Points</div></div>
+    <div class="stat-box"><div class="sv" style="color:var(--gold)">${C.features.length}</div><div class="sl">Features</div></div>
+    <div class="stat-box"><div class="sv" style="color:var(--violet2)">${normMode}</div><div class="sl">Normalisation</div></div>`;
+  // preview table
+  document.getElementById('data-table').innerHTML=`
+    <thead><tr><th>#</th>${C.features.map(f=>`<th>${f}</th>`).join('')}</tr></thead>
+    <tbody>${pts.slice(0,20).map((p,i)=>`<tr><td style="color:var(--muted)">${i+1}</td>${C.features.map(f=>`<td>${typeof p[f]==='number'?p[f].toFixed(4):p[f]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  // scatter
+  const canvas=document.getElementById('data-scatter');
+  if(canvas&&pts.length){
+    const {ctx,W,H}=canvasSetup(canvas);
+    const PAD=28;
+    const {xmin,xmax,ymin,ymax}=getBounds(pts);
+    pts.forEach(p=>{
+      const [cx,cy]=ptToCanvas(p,W,H,PAD,xmin,xmax,ymin,ymax);
+      ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,201,177,0.5)';ctx.fill();
+    });
+    drawAxes(ctx,W,H,PAD,pts);
+  }
+}
+
+/* ════════════════════════════════════════
+   EXPORT
+════════════════════════════════════════ */
+function exportLabels(){
+  if(!C.labels.length){alert('Run a clustering algorithm first.');return;}
+  const pts=C.data||[];
+  dlCSV([['index',...C.features,'cluster'],...pts.map((p,i)=>[i,...C.features.map(f=>typeof p[f]==='number'?p[f].toFixed(6):p[f]),C.labels[i]])],'cluster_labels.csv');
+}
+function exportSilhouette(){
+  if(!C.labels.length){alert('Run a clustering algorithm first.');return;}
+  const pts=C.data||[];
+  const scores=pts.map((p,i)=>{
+    const ci=C.labels[i];const k=Math.max(...C.labels)+1;
+    const same=pts.filter((_,j)=>C.labels[j]===ci&&j!==i);
+    const a=same.length?mean(same.map(q=>dist([p.x,p.y],[q.x,q.y]))):0;
+    let b=Infinity;
+    for(let ck=0;ck<k;ck++){if(ck===ci)continue;const other=pts.filter((_,j)=>C.labels[j]===ck);if(!other.length)continue;const m=mean(other.map(q=>dist([p.x,p.y],[q.x,q.y])));if(m<b)b=m;}
+    return(b===Infinity?0:(b-a)/Math.max(a,b)).toFixed(6);
+  });
+  dlCSV([['index','cluster','silhouette'],...scores.map((s,i)=>[i,C.labels[i],s])],'silhouette_scores.csv');
+}
+function exportDataOut(){
+  if(!C.data.length){alert('Load data first.');return;}
+  dlCSV([['index',...C.features],...C.data.map((p,i)=>[i,...C.features.map(f=>typeof p[f]==='number'?p[f].toFixed(6):p[f])])],'clustering_data.csv');
+}
+function dlCSV(rows,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
+  a.download=name;a.click();
+}
+function buildReport(){
+  const pts=C.data||[];
+  document.getElementById('report-body').innerHTML=`
+    <div class="stat-grid">
+      <div class="stat-box"><div class="sv" style="color:var(--teal3)">${pts.length}</div><div class="sl">Points</div></div>
+      <div class="stat-box"><div class="sv" style="color:var(--gold)">${C.features.length}</div><div class="sl">Features</div></div>
+      <div class="stat-box"><div class="sv" style="color:var(--violet2)">${C.labels.length?Math.max(...C.labels.filter(l=>l>=0))+1:'—'}</div><div class="sl">Clusters</div></div>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.72rem;line-height:2.1;color:var(--text2);">
+      Normalisation: <strong>${normMode}</strong><br>
+      Features used: <strong>${C.features.join(', ')}</strong><br>
+      Cluster labels: <strong>${C.labels.length}</strong> assigned
+    </div>`;
+}
+
+/* ════════════════════════════════════════
+   TOOLTIP
+════════════════════════════════════════ */
+function initTooltip(){
+  const tip=document.getElementById('cl-tooltip');if(!tip)return;
+  let ht=null,cur=null;
+  tip.addEventListener('mouseenter',()=>clearTimeout(ht));
+  tip.addEventListener('mouseleave',()=>sched());
+  function sched(d=160){clearTimeout(ht);ht=setTimeout(()=>{tip.classList.remove('visible','arrow-down','arrow-up');cur=null;},d);}
+  function show(el){
+    clearTimeout(ht);if(cur===el&&tip.classList.contains('visible'))return;cur=el;
+    const inner=el.querySelector('.term-tip');if(!inner)return;
+    tip.innerHTML=inner.innerHTML;
+    const TW=255,TH=130,VW=window.innerWidth;
+    const rect=el.getBoundingClientRect();
+    const cx=Math.max(TW/2+8,Math.min(VW-TW/2-8,rect.left+rect.width/2));
+    const dir=rect.top-TH-10>0?'arrow-down':'arrow-up';
+    const top=dir==='arrow-down'?rect.top-TH-10:rect.bottom+10;
+    const left=Math.max(8,Math.min(VW-TW-8,cx-TW/2));
+    tip.style.left=left+'px';tip.style.top=top+'px';
+    tip.style.setProperty('--al',(cx-left)+'px');
+    tip.classList.remove('arrow-down','arrow-up');tip.classList.add(dir,'visible');
+  }
+  document.addEventListener('mouseenter',e=>{const t=e.target.closest('.term');if(t)show(t);},true);
+  document.addEventListener('mouseleave',e=>{if(e.target.closest('.term'))sched();},true);
+  document.addEventListener('scroll',()=>sched(0),true);
+  document.querySelectorAll('.tabbar button').forEach(b=>b.addEventListener('click',()=>sched(0)));
+}
+
+/* ════════════════════════════════════════
+   DENDROGRAM DRAG — cut height
+════════════════════════════════════════ */
+function initDendroInteract(){
+  const dc=document.getElementById('hc-dendro');if(!dc)return;
+  let dragging=false;
+  function getK(e){
+    const r=dc.getBoundingClientRect();
+    const cy=((e.touches?e.touches[0].clientY:e.clientY)-r.top)*(dc.height/r.height);
+    const TPAD=12,BPAD=24,iH=dc.height-TPAD-BPAD;
+    const frac=1-(cy-TPAD)/iH;
+    if(!hcModel||!hcModel.length) return hcK;
+    const maxD=Math.max(...hcModel.map(m=>m.d))*1.08;
+    const targetH=frac*maxD;
+    // count how many merges above targetH
+    const above=hcModel.filter(m=>m.d>=targetH).length;
+    const k=Math.min(8,Math.max(1,above+1));
+    return k;
+  }
+  dc.addEventListener('mousedown',e=>{dragging=true;hcK=getK(e);document.getElementById('hc-k').value=hcK;document.getElementById('hc-k-val').textContent=hcK;updateSliderPct(document.getElementById('hc-k'));drawDendrogram();});
+  dc.addEventListener('mousemove',e=>{if(!dragging)return;hcK=getK(e);document.getElementById('hc-k').value=hcK;document.getElementById('hc-k-val').textContent=hcK;updateSliderPct(document.getElementById('hc-k'));drawDendrogram();});
+  dc.addEventListener('mouseup',()=>dragging=false);
+  dc.addEventListener('touchstart',e=>{hcK=getK(e);drawDendrogram();e.preventDefault();},{passive:false});
+  dc.addEventListener('touchmove',e=>{hcK=getK(e);document.getElementById('hc-k').value=hcK;document.getElementById('hc-k-val').textContent=hcK;drawDendrogram();e.preventDefault();},{passive:false});
+}
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+window.onload=()=>{
+  initTooltip();
+  initDendroInteract();
+  ['km-k','db-eps','db-min','hc-k'].forEach(id=>{
+    const el=document.getElementById(id);if(el)updateSliderPct(el);
+  });
+  // pre-load moons for DBSCAN, blobs for KMeans & HC
+  kmSrc=genData('blobs',240);
+  dbSrc=genData('moons',200);
+  hcSrc=genData('blobs',60);
+  // init KMeans canvas
+  drawKMeans();
+  // load default data tab
+  loadBuiltin('blobs');
+};
+</script>
+</body>
+</html>
